@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tunnel Lab · RTD & SET simulator</title>
+  <meta name="description" content="Interactive simulator of resonant tunneling diodes, single-electron transistors and quantum dots: real transfer-matrix and master-equation physics in 3D.">
+  <meta name="theme-color" content="#06090d">
+</head>
+<body data-mode="qd">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 24h7V8h3v16h8V8h3v16h7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="17" r="2.6" fill="#5fe1ff"/></svg>
+      <div><b>Tunnel Lab</b><span>resonant &amp; single-electron tunnelling</span></div>
+    </div>
+    <nav class="seg modes" aria-label="Device">
+      <button data-mode="rtd"><b>RTD</b><small>Resonant diode</small></button>
+      <button data-mode="set"><b>SET</b><small>Single-electron</small></button>
+      <button data-mode="qd"><b>QD</b><small>Quantum dot</small></button>
+    </nav>
+    <div class="top-r">
+      <div class="seg views" aria-label="View">
+        <button data-view="device" class="on">Device</button>
+        <button data-view="landscape">Energy landscape</button>
+      </div>
+      <button id="btn-labels" class="ghost on" title="Show or hide labels">Labels</button>
+      <button id="btn-tasks" class="ghost">Experiments <span id="task-count">0/6</span></button>
+      <button id="btn-model" class="ghost">Model</button>
+    </div>
+  </header>
+
+  <aside class="left" id="controls" aria-label="Controls"></aside>
+
+  <main class="stage-wrap">
+    <div id="stage"></div>
+    <div class="mode-card"><span class="eyebrow">Device</span><h2 id="mode-name"></h2><p id="mode-blurb"></p></div>
+    <div class="hud">
+      <div class="meter">
+        <span class="eyebrow">Current</span>
+        <output id="meter-i">—</output>
+        <div id="meter-bar"><i></i></div>
+        <small id="meter-x"></small>
+      </div>
+      <div class="nbox" title="Electrons on the island right now (live Monte-Carlo)"><span class="eyebrow">N live</span><output id="meter-n">0</output></div>
+      <div class="story"><span id="regime" class="pill">—</span><p id="story"></p></div>
+    </div>
+    <div id="veil"></div>
+    <div id="toast" role="status"></div>
+
+    <section id="intro">
+      <div class="intro-in">
+        <span class="eyebrow">Interactive device physics</span>
+        <h1>Tunnel Lab</h1>
+        <p>Electrons that cross barriers they cannot climb, one at a time, and only at the right energy. Choose a device to begin.</p>
+        <div class="cards">
+          <button data-start="rtd"><b>RTD</b><span>Resonant tunneling diode</span><small>Peak current and negative differential resistance</small></button>
+          <button data-start="set"><b>SET</b><span>Single-electron transistor</span><small>Coulomb blockade, one electron at a time</small></button>
+          <button data-start="qd"><b>QD</b><span>Quantum dot</span><small>Both effects: levels plus charging</small></button>
+        </div>
+        <p class="keys">Keys: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> devices · <kbd>V</kbd> device / landscape · drag any plot to move the operating point</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="right" aria-label="Measurements">
+    <div class="plot"><h5>Band diagram <em>live</em></h5><div class="cv" id="p-band"></div></div>
+    <div class="plot"><h5 id="t-curve">Current vs bias</h5><div class="cv" id="p-curve"></div></div>
+    <div class="plot dot-only"><h5><span id="t-map">Stability diagram</span><span class="seg sm" id="map-kind"><button data-k="didv" class="on">dI/dV</button><button data-k="i">I</button></span></h5><div class="cv tall" id="p-map"></div></div>
+    <div class="plot rtd-only"><h5>Transmission spectrum T(E)</h5><div class="cv tall" id="p-spec"></div></div>
+    <div class="plot dot-only"><h5>Coulomb oscillations · I vs Vg</h5><div class="cv short" id="p-gate"></div></div>
+  </aside>
+
+  <section id="tasks" aria-label="Experiments">
+    <header><h3>Experiments</h3><button id="tasks-close" class="ghost" aria-label="Close">✕</button></header>
+    <ol id="task-list"></ol>
+  </section>
+
+  <section id="model" aria-label="About the model">
+    <div class="model-in">
+      <button id="model-close" class="ghost" aria-label="Close">✕</button>
+      <span class="eyebrow">What is being computed</span>
+      <h3>The model behind every number</h3>
+      <div class="cols">
+        <div>
+          <h4>Resonant tunneling diode</h4>
+          <p>The double-barrier potential, tilted by the bias, is cut into 0.25 nm slices. A transfer matrix gives the exact transmission T(E) of each energy. Current is the Tsu–Esaki integral:</p>
+          <code>J = (q m* kT / 2π²ħ³) ∫ T(E) ln[(1+e^{(E_F−E)/kT}) / (1+e^{(E_F−qV−E)/kT})] dE</code>
+          <p>Emitter Fermi energy from 10¹⁸ cm⁻³ doping. Constant effective mass, no space charge.</p>
+        </div>
+        <div>
+          <h4>Single-electron transistor</h4>
+          <p>Orthodox theory. The island charge N changes by single tunnel events with rate</p>
+          <code>Γ = ΔF / (q² R) / (1 − e^{−ΔF/kT})</code>
+          <p>Charging energy E_c = e²/CΣ from a disk island (CΣ = 8ε r), with Cg : Cs : Cd = 0.30 : 0.35 : 0.35. The master equation is solved for the stationary probabilities of N.</p>
+        </div>
+        <div>
+          <h4>Quantum dot</h4>
+          <p>Constant-interaction model: adding electron N+1 into orbital k costs</p>
+          <code>μ(N+1) = E_c(N + ½) − e(CgVg + CsVs + CdVd)/CΣ + ε_k</code>
+          <p>Spin-degenerate orbitals spaced Δ = 2πħ²/m*A. Sequential tunnelling with fast internal relaxation, tunnel rate from the WKB barrier factor.</p>
+        </div>
+      </div>
+      <p class="limits"><b>Teaching model.</b> Left out: self-consistent charge (Schrödinger–Poisson), NEGF, cotunnelling, spin and phonon effects. Numbers are representative of real devices but not fitted to any one. The 3D electrons are a kinetic Monte-Carlo of the same rates, slowed from GHz to human time.</p>
+    </div>
+  </section>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
