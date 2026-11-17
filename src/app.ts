@@ -77,12 +77,15 @@ export class App {
 
   // ------------------------------------------------------------------ DOM wiring
   private wire() {
-    document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => this.setMode(b.dataset.mode as Mode)));
-    document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => b.addEventListener('click', () => this.setView(b.dataset.view as View)));
+    document.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((b) => b.addEventListener('click', () => this.setMode(b.dataset.mode as Mode)));
+    document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach((b) => b.addEventListener('click', () => this.setView(b.dataset.view as View)));
     this.$('#btn-labels').addEventListener('click', () => { this.labelsOn = !this.labelsOn; this.applyLabels(); this.$('#btn-labels').classList.toggle('on', this.labelsOn); });
     this.$('#btn-tasks').addEventListener('click', () => this.$('#tasks').classList.toggle('open'));
     this.$('#btn-explode').addEventListener('click', () => this.toggleExplode());
-    this.$('#btn-reset').addEventListener('click', () => this.stage.fly(this.st.s.view === 'device' ? this.devicePose() : POSES.land, 1.1));
+    this.$('#btn-reset').addEventListener('click', () => {
+      if (this.dev.exploded) { this.dev.setExplode(false); this.$('#btn-explode').classList.remove('on'); }
+      this.stage.fly(this.st.s.view === 'device' ? this.devicePose() : POSES.land, 1.1);
+    });
     this.$('#tasks-close').addEventListener('click', () => this.$('#tasks').classList.remove('open'));
     this.$('#btn-model').addEventListener('click', () => this.$('#model').classList.add('open'));
     this.$('#model-close').addEventListener('click', () => this.$('#model').classList.remove('open'));
@@ -111,17 +114,29 @@ export class App {
     if (this.st.s.view !== 'device') this.setView('device');
     this.dev.setExplode(!this.dev.exploded);
     this.$('#btn-explode').classList.toggle('on', this.dev.exploded);
-    const p = this.devicePose();
-    this.stage.fly(this.dev.exploded ? { pos: p.pos.clone().multiplyScalar(1.22).add(v(0, 3.2, 0)), target: p.target.clone().add(v(0, this.st.s.mode === 'rtd' ? 2.6 : 1.8, 0)) } : p, 1.1);
+    // keep the viewer's angle and zoom; only lift the target and back off a little
+    const lift = this.st.s.mode === 'rtd' ? 2.6 : 1.8;
+    const c = this.stage.controls.target.clone().add(v(0, this.dev.exploded ? lift : -lift, 0));
+    const d = this.stage.camera.position.distanceTo(this.stage.controls.target) * (this.dev.exploded ? 1.25 : 0.8);
+    this.stage.fly(this.keepAngle({ pos: c, target: c }, d), 1.1);
+  }
+
+  /** Same viewing direction as now, aimed at the pose's target, at the given (or the pose's) distance. */
+  private keepAngle(p: Pose, dist?: number): Pose {
+    const cam = this.stage.camera.position, tgt = this.stage.controls.target;
+    const sph = new THREE.Spherical().setFromVector3(cam.clone().sub(tgt));
+    sph.radius = dist ?? p.pos.distanceTo(p.target);
+    sph.phi = Math.min(Math.max(sph.phi, 0.12), Math.PI * 0.46);
+    return { pos: p.target.clone().add(new THREE.Vector3().setFromSpherical(sph)), target: p.target.clone() };
   }
 
   private devicePose() { return this.st.s.mode === 'rtd' ? POSES.rtd : POSES.lateral; }
 
   setMode(m: Mode, fly = true) {
-    if (m === this.st.s.mode && !fly) { this.applyMode(true); return; }
+    if (m === this.st.s.mode) { if (!fly) this.applyMode(true); return; }
     this.st.ui((s) => { s.mode = m; });
     this.applyMode(true);
-    if (fly) this.stage.fly(this.st.s.view === 'device' ? this.devicePose() : POSES.land, 1.3);
+    if (fly) this.stage.fly(this.keepAngle(this.st.s.view === 'device' ? this.devicePose() : POSES.land), 1.3);
   }
 
   private switching = false;
@@ -140,8 +155,9 @@ export class App {
       try {
         this.st.ui((s) => { s.view = vw; });
         this.applyView();
-        this.stage.jump({ pos: to.pos.clone().lerp(to.target, -0.25), target: to.target.clone() });
-        this.stage.fly(to, 1.0);
+        const end = this.keepAngle(to);
+        this.stage.jump({ pos: end.pos.clone().lerp(end.target, -0.25), target: end.target.clone() });
+        this.stage.fly(end, 1.0);
       } finally {
         veil.classList.remove('on');
         this.switching = false;
@@ -155,7 +171,7 @@ export class App {
     this.land.group.visible = !dev;
     this.stage.ruler.visible = dev;
     this.$('#btn-explode').toggleAttribute('disabled', !dev);
-    document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === this.st.s.view));
+    document.querySelectorAll<HTMLButtonElement>('button[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === this.st.s.view));
     this.applyLabels();
   }
 
@@ -170,7 +186,7 @@ export class App {
     const m = this.st.s.mode;
     this.dev.setMode(m);
     this.land.setMode(m);
-    document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+    document.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
     document.body.dataset.mode = m;
     this.$('#mode-name').textContent = MODE_INFO[m].name;
     this.$('#mode-blurb').textContent = MODE_INFO[m].blurb;
