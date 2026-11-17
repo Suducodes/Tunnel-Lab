@@ -130,8 +130,8 @@ body:not([data-mode=rtd]) .rtd-only { display: none; }
 .lbl-dim { opacity: .75; }
 .lbl-dim .lbl-dot { background: var(--faint); }
 
-#veil { position: fixed; inset: 0; background: var(--bench); opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 3; }
-#veil.on { opacity: .85; }
+#veil { position: fixed; inset: 0; background: var(--bench); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 3; }
+#veil.on { opacity: .7; }
 
 #toast { position: fixed; top: 84px; left: 50%; transform: translate(-50%, -8px); max-width: 380px; padding: 12px 14px; border-radius: 8px; background: var(--panel-hi); border: 1px solid rgba(95,208,195,.45); display: flex; flex-direction: column; gap: 4px; opacity: 0; pointer-events: none; z-index: 9; }
 #toast b { color: var(--teal); font: 600 13px var(--f-display); letter-spacing: .1em; text-transform: uppercase; }

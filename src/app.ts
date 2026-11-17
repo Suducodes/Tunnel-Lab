@@ -124,21 +124,29 @@ export class App {
     if (fly) this.stage.fly(this.st.s.view === 'device' ? this.devicePose() : POSES.land, 1.3);
   }
 
+  private switching = false;
   setView(vw: View) {
-    if (vw === this.st.s.view) return;
+    if (vw === this.st.s.view || this.switching) return;
+    this.switching = true;
     const veil = this.$('#veil');
     veil.classList.add('on');
+    if (vw === 'landscape' && this.dev.exploded) { this.dev.setExplode(false); this.$('#btn-explode').classList.remove('on'); }
     const to = vw === 'device' ? this.devicePose() : POSES.land;
-    // dive: fly part-way, swap under the veil, settle
-    const mid: Pose = { pos: this.stage.camera.position.clone().lerp(new THREE.Vector3(0, 1.2, 0), 0.6), target: this.stage.controls.target.clone() };
-    this.stage.fly(mid, 0.45, () => {
-      this.st.ui((s) => { s.view = vw; });
-      this.applyView();
-      const start: Pose = { pos: to.pos.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 0.8, 0)), target: to.target.clone() };
-      this.stage.jump(start);
-      veil.classList.remove('on');
-      this.stage.fly(to, 1.1);
-    });
+    // dive towards the device, swap under the veil, then settle into the new view.
+    // The swap runs on a timer, not on the camera animation, so it can never get stuck.
+    const tgt = this.stage.controls.target.clone();
+    this.stage.fly({ pos: this.stage.camera.position.clone().lerp(tgt, 0.35), target: tgt }, 0.3);
+    setTimeout(() => {
+      try {
+        this.st.ui((s) => { s.view = vw; });
+        this.applyView();
+        this.stage.jump({ pos: to.pos.clone().lerp(to.target, -0.25), target: to.target.clone() });
+        this.stage.fly(to, 1.0);
+      } finally {
+        veil.classList.remove('on');
+        this.switching = false;
+      }
+    }, 300);
   }
 
   private applyView() {
