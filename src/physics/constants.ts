@@ -25,13 +25,13 @@ export interface Material {
 }
 
 export const MATERIALS: Material[] = [
-  { id: 'gaas', name: 'GaAs / Al₀.₃Ga₀.₇As', short: 'GaAs', mEff: 0.067, vb: 0.25, epsR: 12.9, doping: 1e18, rtd: true, modes: ['rtd', 'qd'],
+  { id: 'gaas', name: 'GaAs / Al₀.₃Ga₀.₇As', short: 'GaAs / AlGaAs', mEff: 0.067, vb: 0.25, epsR: 12.9, doping: 1e18, rtd: true, modes: ['rtd', 'qd'],
     note: 'The classic III-V heterostructure. ΔEc ≈ 0.25 eV, light electrons (0.067 m₀).' },
-  { id: 'ingaas', name: 'In₀.₅₃Ga₀.₄₇As / AlAs', short: 'InGaAs', mEff: 0.041, vb: 1.0, epsR: 13.9, doping: 1e18, rtd: true, modes: ['rtd', 'qd'],
+  { id: 'ingaas', name: 'In₀.₅₃Ga₀.₄₇As / AlAs', short: 'InGaAs / AlAs', mEff: 0.041, vb: 1.0, epsR: 13.9, doping: 1e18, rtd: true, modes: ['rtd', 'qd'],
     note: 'Deep barriers (≈1 eV) and very light electrons: the record-speed RTD system.' },
-  { id: 'si', name: 'Si / SiO₂', short: 'Si', mEff: 0.19, vb: 3.1, epsR: 11.7, doping: 1e19, rtd: false, modes: ['set', 'qd'],
+  { id: 'si', name: 'Si / SiO₂', short: 'Si / SiO₂', mEff: 0.19, vb: 3.1, epsR: 11.7, doping: 1e19, rtd: false, modes: ['set', 'qd'],
     note: 'Silicon island with oxide tunnel barriers: CMOS-compatible SETs and spin-qubit sensors.' },
-  { id: 'al', name: 'Al / AlOx', short: 'Al', mEff: 1, vb: 2.0, epsR: 9, doping: 0, rtd: false, modes: ['set'],
+  { id: 'al', name: 'Al / AlOx', short: 'Al / AlOx', mEff: 1, vb: 2.0, epsR: 9, doping: 0, rtd: false, modes: ['set'],
     note: 'The textbook metallic SET: aluminium island, thermally grown AlOx junctions (Fulton & Dolan 1987).' },
 ];
 

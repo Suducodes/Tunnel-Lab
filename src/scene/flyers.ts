@@ -21,7 +21,7 @@ export class Flyers {
       const o = new THREE.Group();
       o.add(new THREE.Mesh(SPH, M.electron));
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: '#5fe1ff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      s.scale.setScalar(5);
+      s.scale.setScalar(4);
       o.add(s);
       return o;
     })();
@@ -52,7 +52,7 @@ export class Flyers {
       f.obj.position.copy(f.path(f.u));
       const a = f.fade(f.u);
       f.obj.scale.setScalar(this.size * (0.35 + 0.65 * a));
-      ((f.obj.children[1] as THREE.Sprite).material as THREE.SpriteMaterial).opacity = 0.7 * a;
+      ((f.obj.children[1] as THREE.Sprite).material as THREE.SpriteMaterial).opacity = 0.45 * a;
     }
   }
 

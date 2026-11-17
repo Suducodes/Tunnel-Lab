@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Store, type Mode, type View } from './state';
+import { Store, mat, type Mode, type View } from './state';
 import { Stage, type Pose } from './scene/stage';
 import { Devices } from './scene/device';
 import { Landscape } from './scene/landscape';
@@ -13,16 +13,16 @@ import { KB_EV } from './physics/constants';
 
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const POSES: Record<string, Pose> = {
-  lateral: { pos: v(11.5, 11.2, 15.5), target: v(0, -0.4, 0.4) },
-  rtd: { pos: v(10.8, 8.6, 14.2), target: v(0, 1.2, 0) },
-  land: { pos: v(-1.6, 7.6, 14.2), target: v(0, 1.3, 0) },
-  intro: { pos: v(22, 20, 32), target: v(0, 0, 0) },
+  lateral: { pos: v(9.6, 12.4, 15.2), target: v(0.3, 0.9, 0.9) },
+  rtd: { pos: v(10.4, 9.4, 14.4), target: v(0.2, 2.2, 0.4) },
+  land: { pos: v(-2.0, 17.6, 18.6), target: v(0, 2.0, 0.2) },
+  intro: { pos: v(18, 16, 26), target: v(0, 1, 0) },
 };
 
-const MODE_INFO: Record<Mode, { name: string; tag: string; blurb: string }> = {
-  rtd: { name: 'Resonant tunneling diode', tag: 'RTD', blurb: 'Two barriers, one quantum well. Current flows only when the well level lines up with the electron sea, giving a peak and negative differential resistance.' },
-  set: { name: 'Single-electron transistor', tag: 'SET', blurb: 'A tiny metal island between two tunnel junctions. Each electron costs charging energy e²/C, so charge moves one electron at a time.' },
-  qd: { name: 'Quantum dot transistor', tag: 'QD', blurb: 'Both effects at once: discrete quantum levels and single-electron charging. Diamonds alternate in size as orbitals fill.' },
+const MODE_INFO: Record<Mode, { name: string; tag: string; chip: string; blurb: string }> = {
+  rtd: { name: 'Resonant diode', tag: 'RTD', chip: 'RTD-3/5', blurb: 'Two barriers, one quantum well. Current flows only when the well level lines up with the electron sea, giving a peak and negative differential resistance.' },
+  set: { name: 'Single-electron', tag: 'SET', chip: 'SET-AL2', blurb: 'A tiny metal island between two tunnel junctions. Each electron costs charging energy e²/C, so charge moves one electron at a time.' },
+  qd: { name: 'Quantum dot', tag: 'QD', chip: 'QD-24', blurb: 'Both effects at once: discrete quantum levels and single-electron charging. Diamonds alternate in size as orbitals fill.' },
 };
 
 export class App {
@@ -61,12 +61,13 @@ export class App {
     this.stage.jump(POSES.intro);
     this.applyLabels();
     // deep links: #rtd, #set, #qd, optionally with -landscape
-    const m = /^#(rtd|set|qd)(-landscape)?$/.exec(location.hash);
+    const m = /^#(rtd|set|qd)(-landscape|-explode)?$/.exec(location.hash);
     if (m) {
       this.$('#intro').classList.add('gone');
       this.setMode(m[1] as Mode, false);
-      if (m[2]) { this.st.ui((s) => { s.view = 'landscape'; }); this.applyView(); }
+      if (m[2] === '-landscape') { this.st.ui((s) => { s.view = 'landscape'; }); this.applyView(); }
       this.stage.jump(this.st.s.view === 'device' ? this.devicePose() : POSES.land);
+      if (m[2] === '-explode') this.toggleExplode();
       this.applyLabels();
     }
     addEventListener('hashchange', () => location.reload());
@@ -80,6 +81,8 @@ export class App {
     document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => b.addEventListener('click', () => this.setView(b.dataset.view as View)));
     this.$('#btn-labels').addEventListener('click', () => { this.labelsOn = !this.labelsOn; this.applyLabels(); this.$('#btn-labels').classList.toggle('on', this.labelsOn); });
     this.$('#btn-tasks').addEventListener('click', () => this.$('#tasks').classList.toggle('open'));
+    this.$('#btn-explode').addEventListener('click', () => this.toggleExplode());
+    this.$('#btn-reset').addEventListener('click', () => this.stage.fly(this.st.s.view === 'device' ? this.devicePose() : POSES.land, 1.1));
     this.$('#tasks-close').addEventListener('click', () => this.$('#tasks').classList.remove('open'));
     this.$('#btn-model').addEventListener('click', () => this.$('#model').classList.add('open'));
     this.$('#model-close').addEventListener('click', () => this.$('#model').classList.remove('open'));
@@ -98,9 +101,18 @@ export class App {
       if ((e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLInputElement).type !== 'range') return;
       if (e.key === '1') this.setMode('rtd'); if (e.key === '2') this.setMode('set'); if (e.key === '3') this.setMode('qd');
       if (e.key === 'v') this.setView(this.st.s.view === 'device' ? 'landscape' : 'device');
+      if (e.key === 'e') this.toggleExplode();
       if (e.key === 'Escape') { this.$('#model').classList.remove('open'); this.$('#tasks').classList.remove('open'); }
     });
     this.renderTasks();
+  }
+
+  private toggleExplode() {
+    if (this.st.s.view !== 'device') this.setView('device');
+    this.dev.setExplode(!this.dev.exploded);
+    this.$('#btn-explode').classList.toggle('on', this.dev.exploded);
+    const p = this.devicePose();
+    this.stage.fly(this.dev.exploded ? { pos: p.pos.clone().multiplyScalar(1.22).add(v(0, 3.2, 0)), target: p.target.clone().add(v(0, this.st.s.mode === 'rtd' ? 2.6 : 1.8, 0)) } : p, 1.1);
   }
 
   private devicePose() { return this.st.s.mode === 'rtd' ? POSES.rtd : POSES.lateral; }
@@ -133,7 +145,8 @@ export class App {
     const dev = this.st.s.view === 'device';
     this.dev.group.visible = dev;
     this.land.group.visible = !dev;
-    this.stage.scene.fog = dev ? new THREE.Fog('#06090d', 34, 80) : new THREE.Fog('#06090d', 26, 60);
+    this.stage.ruler.visible = dev;
+    this.$('#btn-explode').toggleAttribute('disabled', !dev);
     document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === this.st.s.view));
     this.applyLabels();
   }
@@ -194,7 +207,16 @@ export class App {
     this.$('#story').textContent = s.text;
     const extra = this.$('#meter-x');
     if (st.s.mode === 'rtd') extra.textContent = `V = ${(st.s.rtd.V * 1000).toFixed(0)} mV · ${(st.rtd.J / 1e7).toFixed(2)} kA/cm²`;
-    else extra.textContent = `N = ${st.dot.pt.Nmax} · ⟨N⟩ = ${st.dot.pt.Nmean.toFixed(2)} · T = ${st.s.T < 1 ? (st.s.T * 1000).toFixed(0) + ' mK' : st.s.T.toFixed(1) + ' K'}`;
+    else extra.textContent = `N = ${st.dot.pt.Nmax} · ⟨N⟩ = ${st.dot.pt.Nmean.toFixed(2)}`;
+    // brand block: chip id, material, temperature, key numbers
+    const m = st.s.mode, T = st.s.T;
+    const matName = mat(m === 'rtd' ? st.s.rtd.mat : st.dotS.mat).short;
+    this.$('#brand-eyebrow').textContent = `${MODE_INFO[m].chip} · ${matName}`;
+    this.$('#brand-temp').textContent = T < 1 ? `${(T * 1000).toFixed(0)} mK` : `${T < 10 ? T.toFixed(1) : T.toFixed(0)} K`;
+    const meV = (e: number) => `${(e * 1000).toFixed(1)} meV`;
+    this.$('#brand-meta').textContent = m === 'rtd'
+      ? `E₁ ${meV(st.rtd.E1)} · E_F ${meV(st.rtd.EF)} · barrier ${st.s.rtd.barrier.toFixed(1)} nm · well ${st.s.rtd.well.toFixed(1)} nm`
+      : `Ec ${meV(st.dot.p.Ec)}${st.dot.p.kind === 'qd' ? ` · Δ ${meV(st.dot.p.delta)}` : ''} · e/Cg ${(st.dot.ranges.vgPeriod * 1000).toFixed(1)} mV · ⌀ ${st.dotS.diameter.toFixed(0)} nm`;
   }
 
   private tick(dt: number, t: number) {

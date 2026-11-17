@@ -5,10 +5,10 @@ import * as D from '../physics/dot';
 import { ticks, currentScale } from './format';
 
 export const PAL = {
-  grid: 'rgba(150,185,210,0.07)', axis: 'rgba(170,195,215,0.32)', text: '#7f909e', frost: '#e6edf2',
-  cyan: '#5fe1ff', copper: '#e0915a', amber: '#ffc96b', rose: '#ff6f91', violet: '#9d8cff',
+  grid: 'rgba(233,230,221,0.05)', axis: 'rgba(233,230,221,0.2)', text: '#7d8790', frost: '#ebe7dc',
+  cyan: '#5fd0c3', copper: '#c07a45', amber: '#e2b457', rose: '#e9788a', violet: '#a99cf0',
 };
-const MONO = '500 10px "JetBrains Mono", ui-monospace, monospace';
+const MONO = '500 10px "IBM Plex Mono", ui-monospace, monospace';
 
 type Pad = { l: number; r: number; t: number; b: number };
 
@@ -85,7 +85,7 @@ abstract class Plot {
   cursor(x: number, y?: number) {
     const c = this.ctx;
     c.save();
-    c.strokeStyle = 'rgba(255,201,107,0.7)'; c.setLineDash([3, 3]); c.lineWidth = 1;
+    c.strokeStyle = 'rgba(226,180,87,0.7)'; c.setLineDash([3, 3]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(this.X(x), this.pad.t); c.lineTo(this.X(x), this.pad.t + this.ph); c.stroke();
     if (y !== undefined) {
       c.setLineDash([]);
@@ -118,7 +118,7 @@ export class BandPlot extends Plot {
     // seas
     const fill = (xa: number, xb: number, ea: number, eb: number) => {
       const g = c.createLinearGradient(0, this.Y(eb), 0, this.Y(ea));
-      g.addColorStop(0, 'rgba(95,225,255,0.55)'); g.addColorStop(1, 'rgba(95,225,255,0.10)');
+      g.addColorStop(0, 'rgba(95,208,195,0.5)'); g.addColorStop(1, 'rgba(95,208,195,0.08)');
       c.fillStyle = g; c.fillRect(this.X(xa), this.Y(eb), this.X(xb) - this.X(xa), this.Y(ea) - this.Y(eb));
     };
     fill(this.x0, 0, 0, d.EF);
@@ -129,11 +129,11 @@ export class BandPlot extends Plot {
     c.beginPath(); xs.forEach((x, i) => (i ? c.lineTo(this.X(x), this.Y(us[i])) : c.moveTo(this.X(x), this.Y(us[i]))));
     c.lineTo(this.X(this.x1), this.Y(this.y0)); c.lineTo(this.X(this.x0), this.Y(this.y0)); c.closePath();
     const bg = c.createLinearGradient(0, this.Y(this.y1), 0, this.Y(this.y0));
-    bg.addColorStop(0, 'rgba(224,145,90,0.16)'); bg.addColorStop(1, 'rgba(224,145,90,0.02)');
+    bg.addColorStop(0, 'rgba(192,122,69,0.16)'); bg.addColorStop(1, 'rgba(192,122,69,0.02)');
     c.fillStyle = bg; c.fill();
     this.line(xs, us, PAL.copper, 1.6, false);
     // Fermi levels
-    c.setLineDash([4, 4]); c.strokeStyle = 'rgba(95,225,255,0.8)'; c.lineWidth = 1;
+    c.setLineDash([4, 4]); c.strokeStyle = 'rgba(95,208,195,0.8)'; c.lineWidth = 1;
     c.beginPath(); c.moveTo(this.X(this.x0), this.Y(d.EF)); c.lineTo(this.X(0), this.Y(d.EF));
     c.moveTo(this.X(L), this.Y(d.EF - V)); c.lineTo(this.X(this.x1), this.Y(d.EF - V)); c.stroke(); c.setLineDash([]);
     this.tag('μ emitter', this.X(this.x0) + 4, this.Y(d.EF) - 8, PAL.cyan);
@@ -147,14 +147,14 @@ export class BandPlot extends Plot {
       const amp = (this.y1 - this.y0) * 0.16;
       c.beginPath();
       wx.forEach((x, i) => { const y = this.Y(r1.E + (Math.min(dens[i], mx * 1.2) / mx) * amp); if (i) c.lineTo(this.X(x), y); else c.moveTo(this.X(x), y); });
-      c.strokeStyle = 'rgba(157,140,255,0.9)'; c.lineWidth = 1.3; c.stroke();
+      c.strokeStyle = 'rgba(169,156,240,0.9)'; c.lineWidth = 1.3; c.stroke();
       this.tag('|ψ|²', this.X(p.barrier + p.well / 2), this.Y(r1.E + amp) - 8, PAL.violet, 'center');
     }
     // resonance levels
     d.res.slice(0, 3).forEach((r, k) => {
       const inSea = r.E > 0 && r.E < d.EF + 0.002;
       c.save();
-      c.strokeStyle = inSea ? PAL.amber : 'rgba(255,201,107,0.55)'; c.lineWidth = inSea ? 2.6 : 1.6;
+      c.strokeStyle = inSea ? PAL.amber : 'rgba(226,180,87,0.55)'; c.lineWidth = inSea ? 2.6 : 1.6;
       if (inSea) { c.shadowColor = PAL.amber; c.shadowBlur = 10; }
       c.beginPath(); c.moveTo(this.X(p.barrier), this.Y(r.E)); c.lineTo(this.X(p.barrier + p.well), this.Y(r.E)); c.stroke();
       c.restore();
@@ -176,9 +176,9 @@ export class BandPlot extends Plot {
       const top = this.Y(mu + 3 * kT), mid = this.Y(mu), bot = this.Y(this.y0);
       const g = c.createLinearGradient(0, top, 0, bot);
       const s = Math.max(0.001, Math.min(0.5, (mid - top) / (bot - top)));
-      g.addColorStop(0, 'rgba(95,225,255,0)'); g.addColorStop(s, 'rgba(95,225,255,0.5)'); g.addColorStop(1, 'rgba(95,225,255,0.08)');
+      g.addColorStop(0, 'rgba(95,208,195,0)'); g.addColorStop(s, 'rgba(95,208,195,0.5)'); g.addColorStop(1, 'rgba(95,208,195,0.08)');
       c.fillStyle = g; c.fillRect(this.X(xa), top, this.X(xb) - this.X(xa), bot - top);
-      c.strokeStyle = 'rgba(95,225,255,0.9)'; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(this.X(xa), mid); c.lineTo(this.X(xb), mid); c.stroke(); c.setLineDash([]);
+      c.strokeStyle = 'rgba(95,208,195,0.9)'; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(this.X(xa), mid); c.lineTo(this.X(xb), mid); c.stroke(); c.setLineDash([]);
     };
     lead(0, bx[0], muS); lead(bx[3], 1, muD);
     this.tag('μS', this.X(0.02), this.Y(muS) - 9, PAL.cyan);
@@ -186,12 +186,12 @@ export class BandPlot extends Plot {
     this.tag('SOURCE', this.X(0.15), this.Y(this.y1) + 10, PAL.text, 'center');
     this.tag('DRAIN', this.X(0.85), this.Y(this.y1) + 10, PAL.text, 'center');
     // bias window
-    c.fillStyle = 'rgba(255,201,107,0.07)';
+    c.fillStyle = 'rgba(226,180,87,0.07)';
     c.fillRect(this.X(bx[1]), this.Y(Math.max(muS, muD)), this.X(bx[2]) - this.X(bx[1]), Math.abs(this.Y(muS) - this.Y(muD)));
     // barriers
     for (const [a, b] of [[bx[0], bx[1]], [bx[2], bx[3]]]) {
       const g = c.createLinearGradient(this.X(a), 0, this.X(b), 0);
-      g.addColorStop(0, 'rgba(224,145,90,0.15)'); g.addColorStop(0.5, 'rgba(224,145,90,0.45)'); g.addColorStop(1, 'rgba(224,145,90,0.15)');
+      g.addColorStop(0, 'rgba(192,122,69,0.15)'); g.addColorStop(0.5, 'rgba(192,122,69,0.45)'); g.addColorStop(1, 'rgba(192,122,69,0.15)');
       c.fillStyle = g; c.fillRect(this.X(a), this.pad.t, this.X(b) - this.X(a), this.ph);
     }
     // addition ladder
@@ -205,7 +205,7 @@ export class BandPlot extends Plot {
       const inWin = mu <= Math.max(muS, muD) + kT && mu >= Math.min(muS, muD) - kT;
       c.save();
       c.lineWidth = inWin ? 3 : 2;
-      c.strokeStyle = inWin ? PAL.amber : filled ? 'rgba(230,237,242,0.85)' : 'rgba(230,237,242,0.35)';
+      c.strokeStyle = inWin ? PAL.amber : filled ? 'rgba(235,231,220,0.85)' : 'rgba(235,231,220,0.35)';
       if (inWin) { c.shadowColor = PAL.amber; c.shadowBlur = 14; }
       c.beginPath(); c.moveTo(this.X(bx[1] + 0.02), this.Y(mu)); c.lineTo(this.X(bx[2] - 0.02), this.Y(mu)); c.stroke();
       c.restore();
@@ -214,7 +214,7 @@ export class BandPlot extends Plot {
       if (p.kind === 'qd') { // first excited entry for k -> k+1
         const ex = D.muAdd(p, b, k, k + (k % 2 === 0 ? 2 : 1));
         if (ex < this.y1 && ex - mu > 1e-6) {
-          c.strokeStyle = 'rgba(157,140,255,0.45)'; c.setLineDash([3, 3]); c.lineWidth = 1;
+          c.strokeStyle = 'rgba(169,156,240,0.45)'; c.setLineDash([3, 3]); c.lineWidth = 1;
           c.beginPath(); c.moveTo(this.X(bx[1] + 0.05), this.Y(ex)); c.lineTo(this.X(bx[1] + 0.13), this.Y(ex)); c.stroke(); c.setLineDash([]);
         }
       }
@@ -246,7 +246,7 @@ export class CurvePlot extends Plot {
       this.axes('V (V)', 'J (kA/cm²)', (v) => v.toFixed(2), (v) => (v >= 100 ? v.toFixed(0) : v.toPrecision(2)));
       this.clip();
       if (d.peak && d.valley) {
-        c.fillStyle = 'rgba(255,111,145,0.09)';
+        c.fillStyle = 'rgba(233,120,138,0.09)';
         c.fillRect(this.X(d.peak.V), this.pad.t, this.X(d.valley.V) - this.X(d.peak.V), this.ph);
         this.tag('NDR', (this.X(d.peak.V) + this.X(d.valley.V)) / 2, this.pad.t + 10, PAL.rose, 'center');
       }
@@ -269,7 +269,7 @@ export class CurvePlot extends Plot {
     // blockade band
     const thr = 0.01 * mx;
     let a: number | null = null;
-    c.fillStyle = 'rgba(255,111,145,0.08)';
+    c.fillStyle = 'rgba(233,120,138,0.08)';
     d.ivds.V.forEach((v, i) => {
       const bl = Math.abs(d.ivds.I[i]) < thr;
       if (bl && a === null) a = v;
@@ -303,7 +303,7 @@ export class GatePlot extends Plot {
     const c = this.ctx;
     c.beginPath(); xs.forEach((x, i) => (i ? c.lineTo(this.X(x), this.Y(ys[i])) : c.moveTo(this.X(x), this.Y(ys[i]))));
     c.lineTo(this.X(this.x1), this.Y(0)); c.lineTo(this.X(this.x0), this.Y(0)); c.closePath();
-    c.fillStyle = 'rgba(95,225,255,0.10)'; c.fill();
+    c.fillStyle = 'rgba(95,208,195,0.10)'; c.fill();
     this.line(xs, ys, PAL.cyan, 1.8);
     this.cursor(st.dotS.Vg * f, d.pt.I * k);
     c.restore();
@@ -365,14 +365,14 @@ export class MapPlot extends Plot {
         if (i - start > 6) {
           const vg = m.spec.vg0 + ((m.spec.vg1 - m.spec.vg0) * ((start + i - 1) / 2)) / (m.spec.nVg - 1);
           const N = D.groundN(d.p, { Vg: vg, Vds: 0 });
-          this.tag(`N=${N}`, this.X(vg * fx), this.Y(0), 'rgba(230,237,242,0.75)', 'center');
+          this.tag(`N=${N}`, this.X(vg * fx), this.Y(0), 'rgba(235,231,220,0.75)', 'center');
         }
         start = -1;
       }
     }
     // crosshair
     const x = st.dotS.Vg * fx, y = st.dotS.Vds * fy;
-    c.strokeStyle = 'rgba(255,201,107,0.55)'; c.setLineDash([3, 3]); c.lineWidth = 1;
+    c.strokeStyle = 'rgba(226,180,87,0.55)'; c.setLineDash([3, 3]); c.lineWidth = 1;
     c.beginPath(); c.moveTo(this.X(x), this.pad.t); c.lineTo(this.X(x), this.pad.t + this.ph); c.moveTo(this.pad.l, this.Y(y)); c.lineTo(this.pad.l + this.pw, this.Y(y)); c.stroke(); c.setLineDash([]);
     c.strokeStyle = PAL.amber; c.lineWidth = 2; c.shadowColor = PAL.amber; c.shadowBlur = 10;
     c.beginPath(); c.arc(this.X(x), this.Y(y), 6, 0, Math.PI * 2); c.stroke(); c.shadowBlur = 0;
@@ -389,7 +389,7 @@ function cmap(v: number, signed: boolean): [number, number, number] {
   }
   const t = Math.min(1, Math.pow(Math.abs(v), signed ? 0.4 : 0.6));
   const stops: [number, number, number, number][] = [
-    [0, 9, 13, 20], [0.25, 34, 30, 92], [0.5, 30, 110, 170], [0.75, 95, 225, 255], [1, 240, 252, 255],
+    [0, 11, 15, 19], [0.25, 22, 52, 60], [0.5, 40, 120, 116], [0.75, 120, 210, 190], [1, 243, 226, 180],
   ];
   for (let k = 1; k < stops.length; k++) {
     if (t <= stops[k][0]) {
@@ -423,7 +423,7 @@ export class SpectrumPlot extends Plot {
     c.beginPath(); c.moveTo(this.X(0), this.Y(this.y0));
     Sx.forEach((E, i) => c.lineTo(this.X(E), this.Y(this.y0 + (Sy[i] / smax) * (this.y1 - this.y0) * 0.55)));
     c.lineTo(this.X(this.x1), this.Y(this.y0)); c.closePath();
-    c.fillStyle = 'rgba(95,225,255,0.13)'; c.fill();
+    c.fillStyle = 'rgba(95,208,195,0.13)'; c.fill();
     this.tag('electrons available', this.X(d.EF) + 6, this.Y(this.y0 + (this.y1 - this.y0) * 0.3), PAL.cyan, 'left');
     const lt = d.spec.T.map((t) => Math.max(-8, Math.log10(Math.max(t, 1e-12))));
     this.line(d.spec.E, lt, PAL.amber, 1.6);

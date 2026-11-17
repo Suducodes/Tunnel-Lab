@@ -3,83 +3,93 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Tunnel Lab · RTD & SET simulator</title>
+  <title>Tunnel Lab · RTD &amp; SET bench</title>
   <meta name="description" content="Interactive simulator of resonant tunneling diodes, single-electron transistors and quantum dots: real transfer-matrix and master-equation physics in 3D.">
-  <meta name="theme-color" content="#06090d">
+  <meta name="theme-color" content="#0d1216">
 </head>
 <body data-mode="qd">
-  <header class="top">
-    <div class="brand">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 24h7V8h3v16h8V8h3v16h7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="17" r="2.6" fill="#5fe1ff"/></svg>
-      <div><b>Tunnel Lab</b><span>resonant &amp; single-electron tunnelling</span></div>
-    </div>
-    <nav class="seg modes" aria-label="Device">
-      <button data-mode="rtd"><b>RTD</b><small>Resonant diode</small></button>
-      <button data-mode="set"><b>SET</b><small>Single-electron</small></button>
-      <button data-mode="qd"><b>QD</b><small>Quantum dot</small></button>
-    </nav>
-    <div class="top-r">
-      <div class="seg views" aria-label="View">
-        <button data-view="device" class="on">Device</button>
-        <button data-view="landscape">Energy landscape</button>
-      </div>
-      <button id="btn-labels" class="ghost on" title="Show or hide labels">Labels</button>
-      <button id="btn-tasks" class="ghost">Experiments <span id="task-count">0/6</span></button>
-      <button id="btn-model" class="ghost">Model</button>
-    </div>
+  <div id="stage"></div>
+
+  <header class="brand">
+    <div class="brand-row"><span id="brand-eyebrow">QD-24 · GaAs / AlGaAs</span><i></i><span id="brand-temp">4.0 K</span></div>
+    <h1>Tunnel Lab <span id="mode-name">Quantum dot</span></h1>
+    <p class="brand-meta" id="brand-meta"></p>
   </header>
 
-  <aside class="left" id="controls" aria-label="Controls"></aside>
+  <nav class="crumbs panel" aria-label="Device">
+    <button data-mode="rtd">RTD</button><span class="sep">/</span>
+    <button data-mode="set">SET</button><span class="sep">/</span>
+    <button data-mode="qd">Quantum dot</button>
+  </nav>
 
-  <main class="stage-wrap">
-    <div id="stage"></div>
-    <div class="mode-card"><span class="eyebrow">Device</span><h2 id="mode-name"></h2><p id="mode-blurb"></p></div>
-    <div class="hud">
-      <div class="meter">
-        <span class="eyebrow">Current</span>
-        <output id="meter-i">—</output>
-        <div id="meter-bar"><i></i></div>
-        <small id="meter-x"></small>
-      </div>
-      <div class="nbox" title="Electrons on the island right now (live Monte-Carlo)"><span class="eyebrow">N live</span><output id="meter-n">0</output></div>
-      <div class="story"><span id="regime" class="pill">—</span><p id="story"></p></div>
+  <aside class="index panel" aria-label="Controls">
+    <div class="panel-head"><span>Controls</span><span class="mono" id="ctl-tag">live</span></div>
+    <div id="controls"></div>
+  </aside>
+
+  <section class="readout panel" aria-live="polite">
+    <div class="ro-top">
+      <div><span class="k">Current</span><output id="meter-i">—</output></div>
+      <div class="ro-n"><span class="k">N live</span><output id="meter-n">0</output></div>
     </div>
-    <div id="veil"></div>
-    <div id="toast" role="status"></div>
+    <div id="meter-bar"><i></i></div>
+    <small id="meter-x"></small>
+    <span id="regime" class="pill">—</span>
+    <p id="story"></p>
+  </section>
 
-    <section id="intro">
-      <div class="intro-in">
-        <span class="eyebrow">Interactive device physics</span>
-        <h1>Tunnel Lab</h1>
-        <p>Electrons that cross barriers they cannot climb, one at a time, and only at the right energy. Choose a device to begin.</p>
-        <div class="cards">
-          <button data-start="rtd"><b>RTD</b><span>Resonant tunneling diode</span><small>Peak current and negative differential resistance</small></button>
-          <button data-start="set"><b>SET</b><span>Single-electron transistor</span><small>Coulomb blockade, one electron at a time</small></button>
-          <button data-start="qd"><b>QD</b><span>Quantum dot</span><small>Both effects: levels plus charging</small></button>
-        </div>
-        <p class="keys">Keys: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> devices · <kbd>V</kbd> device / landscape · drag any plot to move the operating point</p>
-      </div>
-    </section>
-  </main>
-
-  <aside class="right" aria-label="Measurements">
+  <aside class="inst panel" aria-label="Instruments">
+    <div class="panel-head"><span>Instruments</span><span class="mono">drag to probe</span></div>
     <div class="plot"><h5>Band diagram <em>live</em></h5><div class="cv" id="p-band"></div></div>
     <div class="plot"><h5 id="t-curve">Current vs bias</h5><div class="cv" id="p-curve"></div></div>
-    <div class="plot dot-only"><h5><span id="t-map">Stability diagram</span><span class="seg sm" id="map-kind"><button data-k="didv" class="on">dI/dV</button><button data-k="i">I</button></span></h5><div class="cv tall" id="p-map"></div></div>
+    <div class="plot dot-only"><h5><span id="t-map">Stability diagram</span><span class="seg" id="map-kind"><button data-k="didv" class="on">dI/dV</button><button data-k="i">I</button></span></h5><div class="cv tall" id="p-map"></div></div>
     <div class="plot rtd-only"><h5>Transmission spectrum T(E)</h5><div class="cv tall" id="p-spec"></div></div>
     <div class="plot dot-only"><h5>Coulomb oscillations · I vs Vg</h5><div class="cv short" id="p-gate"></div></div>
   </aside>
 
-  <section id="tasks" aria-label="Experiments">
-    <header><h3>Experiments</h3><button id="tasks-close" class="ghost" aria-label="Close">✕</button></header>
+  <div class="toolbar panel" role="toolbar" aria-label="View controls">
+    <button class="tb" data-view="device"><svg viewBox="0 0 16 16"><path d="M2 11l6 3 6-3M2 8l6 3 6-3M8 2L2 5l6 3 6-3z"/></svg>Device</button>
+    <button class="tb" data-view="landscape"><svg viewBox="0 0 16 16"><path d="M1 13h3l2-9 2 9 2-9 2 9h3"/></svg>Landscape</button>
+    <span class="tb-sep"></span>
+    <button class="tb" id="btn-explode"><svg viewBox="0 0 16 16"><path d="M3 4h10M3 8h10M3 12h10M8 1v2M8 13v2"/></svg>Explode</button>
+    <button class="tb on" id="btn-labels"><svg viewBox="0 0 16 16"><path d="M2 3h8l4 5-4 5H2z"/></svg>Labels</button>
+    <button class="tb" id="btn-reset"><svg viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2v3h3"/></svg>Reset</button>
+    <span class="tb-sep"></span>
+    <button class="tb" id="btn-tasks"><svg viewBox="0 0 16 16"><path d="M6 2v4L2 13h12L10 6V2M5 2h6"/></svg>Experiments <b id="task-count">0/6</b></button>
+    <button class="tb" id="btn-model"><svg viewBox="0 0 16 16"><path d="M3 2h8l2 2v10H3zM5 7h6M5 10h6"/></svg>Model</button>
+  </div>
+
+  <p class="hint">Drag to orbit · right-drag to pan · scroll to zoom<br>Drag any plot to move the operating point</p>
+  <p class="foot">Teaching model · representative, not fitted<br>Physics: transfer matrix · orthodox · constant interaction</p>
+
+  <div id="veil"></div>
+  <div id="toast" role="status"></div>
+
+  <section id="intro">
+    <div class="intro-in">
+      <div class="brand-row"><span>Interactive device physics</span><i></i><span>3 devices</span></div>
+      <h1>Tunnel Lab</h1>
+      <p>Electrons that cross barriers they cannot climb, one at a time, and only at the right energy. Pick a device to put on the bench.</p>
+      <div class="cards">
+        <button data-start="rtd"><span class="c-k">RTD</span><b>Resonant tunneling diode</b><small>Peak current and negative differential resistance</small></button>
+        <button data-start="set"><span class="c-k">SET</span><b>Single-electron transistor</b><small>Coulomb blockade, one electron at a time</small></button>
+        <button data-start="qd"><span class="c-k">QD</span><b>Quantum dot</b><small>Both effects: levels plus charging</small></button>
+      </div>
+      <p class="keys"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> devices · <kbd>V</kbd> device / landscape · <kbd>E</kbd> explode</p>
+    </div>
+  </section>
+
+  <section id="tasks" class="panel" aria-label="Experiments">
+    <div class="panel-head"><span>Experiments</span><button id="tasks-close" class="x" aria-label="Close">✕</button></div>
     <ol id="task-list"></ol>
   </section>
 
   <section id="model" aria-label="About the model">
-    <div class="model-in">
-      <button id="model-close" class="ghost" aria-label="Close">✕</button>
-      <span class="eyebrow">What is being computed</span>
+    <div class="model-in panel">
+      <button id="model-close" class="x" aria-label="Close">✕</button>
+      <div class="brand-row"><span>What is being computed</span></div>
       <h3>The model behind every number</h3>
+      <p id="mode-blurb" class="blurb"></p>
       <div class="cols">
         <div>
           <h4>Resonant tunneling diode</h4>
@@ -100,7 +110,7 @@
           <p>Spin-degenerate orbitals spaced Δ = 2πħ²/m*A. Sequential tunnelling with fast internal relaxation, tunnel rate from the WKB barrier factor.</p>
         </div>
       </div>
-      <p class="limits"><b>Teaching model.</b> Left out: self-consistent charge (Schrödinger–Poisson), NEGF, cotunnelling, spin and phonon effects. Numbers are representative of real devices but not fitted to any one. The 3D electrons are a kinetic Monte-Carlo of the same rates, slowed from GHz to human time.</p>
+      <p class="limits"><b>Teaching model.</b> Left out: self-consistent charge (Schrödinger–Poisson), NEGF, cotunnelling, spin and phonon effects. Numbers are representative of real devices but not fitted to any one. The 3D electrons are a kinetic Monte Carlo of the same rates, slowed from GHz to human time.</p>
     </div>
   </section>
 

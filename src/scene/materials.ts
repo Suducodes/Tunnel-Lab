@@ -1,22 +1,30 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { brushed } from './textures';
 
+const goldMap = brushed('#f4f4f4', 0.07);
+const aluMap = brushed('#f0f0f0', 0.1);
+const grainMap = brushed('#e2e2e2', 0.05);
+
+/** Bench-style materials: metals with brushed maps, matte semiconductors, no clearcoat (no glare). */
 export const M = {
-  gold: new THREE.MeshPhysicalMaterial({ color: '#f0bd68', metalness: 1, roughness: 0.2, clearcoat: 0.25 }),
-  goldAlloy: new THREE.MeshPhysicalMaterial({ color: '#c99652', metalness: 1, roughness: 0.48 }),
-  alu: new THREE.MeshPhysicalMaterial({ color: '#d4dbe2', metalness: 1, roughness: 0.26 }),
-  gaas: new THREE.MeshPhysicalMaterial({ color: '#1a2129', metalness: 0.3, roughness: 0.45, clearcoat: 0.18, clearcoatRoughness: 0.45 }),
-  algaas: new THREE.MeshPhysicalMaterial({ color: '#2c3845', metalness: 0.15, roughness: 0.5, clearcoat: 0.15 }),
-  substrate: new THREE.MeshStandardMaterial({ color: '#12171d', metalness: 0.25, roughness: 0.55 }),
-  nplus: new THREE.MeshPhysicalMaterial({ color: '#2b3643', metalness: 0.2, roughness: 0.6, clearcoat: 0.08, clearcoatRoughness: 0.6 }),
-  barrier: new THREE.MeshPhysicalMaterial({ color: '#8c7360', metalness: 0.1, roughness: 0.5, clearcoat: 0.3 }),
-  well: new THREE.MeshPhysicalMaterial({ color: '#171d25', metalness: 0.2, roughness: 0.3, clearcoat: 0.6 }),
-  oxide: new THREE.MeshPhysicalMaterial({ color: '#7fb6ff', metalness: 0, roughness: 0.1, transmission: 0.6, transparent: true, opacity: 0.75 }),
-  twoDeg: new THREE.MeshBasicMaterial({ color: new THREE.Color('#5fe1ff').multiplyScalar(1.15) }),
-  electron: new THREE.MeshBasicMaterial({ color: new THREE.Color('#7fe9ff').multiplyScalar(2.2) }),
-  electronHot: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd27a').multiplyScalar(2.4) }),
+  gold: new THREE.MeshStandardMaterial({ color: '#e9bf6c', map: goldMap, roughness: 0.3, metalness: 1 }),
+  goldAlloy: new THREE.MeshStandardMaterial({ color: '#b99a6a', map: grainMap, roughness: 0.62, metalness: 0.85 }),
+  wire: new THREE.MeshStandardMaterial({ color: '#e8bd6a', roughness: 0.3, metalness: 1 }),
+  alu: new THREE.MeshStandardMaterial({ color: '#cfd5da', map: aluMap, roughness: 0.32, metalness: 1 }),
+  gaas: new THREE.MeshStandardMaterial({ color: '#27303a', roughness: 0.62, metalness: 0.15 }),
+  algaas: new THREE.MeshStandardMaterial({ color: '#36414d', roughness: 0.66, metalness: 0.1 }),
+  substrate: new THREE.MeshStandardMaterial({ color: '#1b2027', roughness: 0.8, metalness: 0.1 }),
+  nplus: new THREE.MeshStandardMaterial({ color: '#33404c', roughness: 0.6, metalness: 0.15 }),
+  spacer: new THREE.MeshStandardMaterial({ color: '#3e4a56', roughness: 0.62, metalness: 0.1 }),
+  barrier: new THREE.MeshStandardMaterial({ color: '#a08566', roughness: 0.6, metalness: 0.05 }),
+  well: new THREE.MeshStandardMaterial({ color: '#202832', roughness: 0.5, metalness: 0.2 }),
+  oxide: new THREE.MeshStandardMaterial({ color: '#8fbfe8', roughness: 0.2, metalness: 0, transparent: true, opacity: 0.7 }),
+  twoDeg: new THREE.MeshStandardMaterial({ color: '#000000', emissive: '#5fd0c3', emissiveIntensity: 1.1, toneMapped: false }),
+  electron: new THREE.MeshBasicMaterial({ color: new THREE.Color('#8ff3e6').multiplyScalar(1.6), toneMapped: false }),
+  electronHot: new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffd27a').multiplyScalar(1.6), toneMapped: false }),
 };
-for (const k of ['gaas', 'algaas', 'substrate', 'nplus', 'well', 'barrier'] as const) M[k].envMapIntensity = 0.35;
+for (const m of [M.gaas, M.algaas, M.substrate, M.nplus, M.spacer, M.barrier, M.well]) m.side = THREE.DoubleSide;
 
 export function label(text: string, sub?: string, cls = ''): CSS2DObject {
   const el = document.createElement('div');
@@ -41,17 +49,23 @@ export function trace(points: [number, number][], width: number, height: number,
   }
   for (const [x, z] of points) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(width / 2, width / 2, height, 24), mat);
-    c.position.set(x, y + height / 2, z); c.castShadow = true;
+    c.position.set(x, y + height / 2, z); c.castShadow = true; c.receiveShadow = true;
     g.add(c);
   }
   return g;
 }
 
-export function bondWire(a: THREE.Vector3, b: THREE.Vector3, lift = 1.4): THREE.Mesh {
-  const mid = a.clone().lerp(b, 0.35); mid.y += lift;
-  const mid2 = a.clone().lerp(b, 0.75); mid2.y += lift * 0.7;
-  const curve = new THREE.CatmullRomCurve3([a, mid, mid2, b]);
-  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.028, 8, false), M.gold);
-  m.castShadow = true;
-  return m;
+/** Gold bond wire with a ball bond at the pad and a wedge at the far end. */
+export function bondWire(a: THREE.Vector3, b: THREE.Vector3, lift = 1.4): THREE.Group {
+  const g = new THREE.Group();
+  const c1 = a.clone().add(new THREE.Vector3(0, lift, 0));
+  const c2 = b.clone().lerp(a, 0.25).add(new THREE.Vector3(0, lift * 0.6, 0));
+  const curve = new THREE.CubicBezierCurve3(a, c1, c2, b);
+  const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.035, 8, false), M.wire);
+  m.castShadow = true; g.add(m);
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 10), M.wire);
+  ball.scale.y = 0.55; ball.position.copy(a); ball.castShadow = true; g.add(ball);
+  const wedge = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.12), M.wire);
+  wedge.position.copy(b); g.add(wedge);
+  return g;
 }

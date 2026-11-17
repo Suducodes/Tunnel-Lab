@@ -9,11 +9,11 @@ import type { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { Flyers } from './flyers';
 import type { Hop } from './mc';
 
-const NX = 240, NZ = 96, W = 14, DEPTH = 6.4, BASE = 1.4;
+const NX = 240, NZ = 96, W = 13, DEPTH = 6.4;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const sig = (x: number) => 1 / (1 + Math.exp(-x));
 
-const LOW = new THREE.Color('#0d3f5a'), MID = new THREE.Color('#33505f'), HIGH = new THREE.Color('#e0915a'), TOPC = new THREE.Color('#ffd9a8');
+const LOW = new THREE.Color('#1d5a60'), MID = new THREE.Color('#3b4954'), HIGH = new THREE.Color('#b9874a'), TOPC = new THREE.Color('#ecd6a6');
 
 interface DotTargets { muS: number; muD: number; floor: number; A: number; }
 
@@ -22,6 +22,8 @@ export class Landscape {
   private geo = new THREE.PlaneGeometry(W, DEPTH, NX, NZ);
   private wgeo = new THREE.PlaneGeometry(W, DEPTH, 120, 48);
   private surf: THREE.Mesh;
+  private skirt!: THREE.Mesh;
+  private edge: number[] = [];
   private wire: THREE.Mesh;
   private seaS: THREE.Mesh; private seaD: THREE.Mesh;
   private rings: THREE.Mesh[] = [];
@@ -40,14 +42,19 @@ export class Landscape {
   constructor(private store: Store) {
     this.geo.rotateX(-Math.PI / 2);
     this.geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array((NX + 1) * (NZ + 1) * 3), 3));
-    this.surf = new THREE.Mesh(this.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.15, envMapIntensity: 0.6 }));
+    this.surf = new THREE.Mesh(this.geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0.05, side: THREE.DoubleSide }));
     this.surf.receiveShadow = true; this.surf.castShadow = true;
     this.wgeo.rotateX(-Math.PI / 2);
-    this.wire = new THREE.Mesh(this.wgeo, new THREE.MeshBasicMaterial({ color: '#bfe6ff', wireframe: true, transparent: true, opacity: 0.07, depthWrite: false }));
+    this.wire = new THREE.Mesh(this.wgeo, new THREE.MeshBasicMaterial({ color: '#ebe7dc', wireframe: true, transparent: true, opacity: 0.07, depthWrite: false }));
     this.wire.position.y = 0.012;
     this.group.add(this.surf, this.wire);
+    this.skirt = new THREE.Mesh(this.makeSkirt(), new THREE.MeshStandardMaterial({ color: '#2c3740', roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide }));
+    this.skirt.castShadow = true; this.skirt.receiveShadow = true;
+    const bottom = new THREE.Mesh(new THREE.PlaneGeometry(W, DEPTH).rotateX(Math.PI / 2), this.skirt.material);
+    bottom.position.y = 0.005;
+    this.group.add(this.skirt, bottom);
 
-    const seaMat = () => new THREE.MeshPhysicalMaterial({ color: '#1aa6cf', emissive: '#0b7397', emissiveIntensity: 0.8, transparent: true, opacity: 0.5, roughness: 0.06, metalness: 0, clearcoat: 1, depthWrite: false });
+    const seaMat = () => new THREE.MeshStandardMaterial({ color: '#2fb3a5', emissive: '#0e4f48', emissiveIntensity: 0.7, transparent: true, opacity: 0.55, roughness: 0.35, metalness: 0, depthWrite: false });
     const seaGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.5, 0);
     this.seaS = new THREE.Mesh(seaGeo, seaMat());
     this.seaD = new THREE.Mesh(seaGeo, seaMat());
@@ -62,7 +69,7 @@ export class Landscape {
       this.group.add(r, e);
     }
     for (let i = 0; i < 3; i++) {
-      const s = new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 6.2), new THREE.MeshBasicMaterial({ color: '#ffc96b', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+      const s = new THREE.Mesh(new THREE.BoxGeometry(1, 0.035, 6.2), new THREE.MeshBasicMaterial({ color: '#e2b457', transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
       this.sheets.push(s); this.group.add(s);
     }
     const n = 260;
@@ -111,7 +118,8 @@ export class Landscape {
   }
 
   // ------------------------------------------------------------ height fields
-  private yE(E: number) { return BASE + E * this.Hs; }
+  private base = 2.6;
+  private yE(E: number) { return this.base + E * this.Hs; }
 
   private dotHeight(x: number, z: number, c: DotTargets): number {
     const A = c.A, lead = 1.25 * A, eB = 1.75 * A + Math.max(0, c.muS, c.muD);
@@ -120,11 +128,11 @@ export class Landscape {
     let h = (c.muS - lead) * (1 - s1) + bowl * (s1 - s2) + (c.muD - lead) * s2;
     const g = Math.max(Math.exp(-(((x + 1.75) / 0.3) ** 2)), Math.exp(-(((x - 1.75) / 0.3) ** 2)));
     h = h + (eB - h) * g;
-    const dotness = sig((x + 1.55) / 0.25) * (1 - sig((x - 1.55) / 0.25));
-    const w = 2.75 - 1.55 * dotness;
-    const t = Math.min(1, Math.max(0, (Math.abs(z) - w) / 0.55));
-    const ss = t * t * (3 - 2 * t);
-    return h + (eB * 1.05 - h) * ss;
+    // gate-defined lateral confinement only around the dot; the leads are open 2DEG
+    const dotness = sig((x + 1.9) / 0.22) * (1 - sig((x - 1.9) / 0.22));
+    const t = Math.min(1, Math.max(0, (Math.abs(z) - 1.15) / 0.7));
+    const ss = t * t * (3 - 2 * t) * dotness;
+    return h + (eB * 0.92 - h) * ss;
   }
 
   private rtdGeom() {
@@ -134,13 +142,46 @@ export class Landscape {
     return { L, xmin, xmax, toW: (xn: number) => -W / 2 + (W * (xn - xmin)) / (xmax - xmin), toN: (xw: number) => xmin + ((xw + W / 2) / W) * (xmax - xmin) };
   }
 
+  /** Side walls from the terrain edge down to the bench, so the landscape reads as a solid model. */
+  private makeSkirt(): THREE.BufferGeometry {
+    const idx = (ix: number, iz: number) => iz * (NX + 1) + ix;
+    const ring: number[] = [];
+    for (let ix = 0; ix <= NX; ix++) ring.push(idx(ix, 0));
+    for (let iz = 1; iz <= NZ; iz++) ring.push(idx(NX, iz));
+    for (let ix = NX - 1; ix >= 0; ix--) ring.push(idx(ix, NZ));
+    for (let iz = NZ - 1; iz >= 0; iz--) ring.push(idx(0, iz));
+    this.edge = ring;
+    const n = ring.length;
+    const pos = new Float32Array(n * 2 * 3);
+    const index: number[] = [];
+    for (let i = 0; i < n - 1; i++) { const a = i * 2, b = a + 1, c = a + 2, d = a + 3; index.push(a, b, c, b, d, c); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setIndex(index);
+    return g;
+  }
+
+  private updateSkirt() {
+    const sp = this.geo.attributes.position as THREE.BufferAttribute;
+    const kp = this.skirt.geometry.attributes.position as THREE.BufferAttribute;
+    this.edge.forEach((vi, i) => {
+      const x = sp.getX(vi), y = sp.getY(vi), z = sp.getZ(vi);
+      kp.setXYZ(i * 2, x, y, z); kp.setXYZ(i * 2 + 1, x, 0.005, z);
+    });
+    kp.needsUpdate = true;
+    this.skirt.geometry.computeVertexNormals();
+    this.skirt.geometry.computeBoundingSphere();
+  }
+
   private heightFn(): (x: number, z: number) => number {
     if (this.mode === 'rtd') {
       const d = this.store.rtd, V = this.store.s.rtd.V, g = this.rtdGeom();
       this.Hs = 1.7 / d.p.mat.vb;
+      this.base = 0.4 + (this.store.rtd.vMax + 0.02) * this.Hs;
       return (x) => R.potentialAt(d.p, V, g.toN(x));
     }
     this.Hs = 0.95 / this.cur.A;
+    this.base = 0.4 + 2.45 * 0.95;
     return (x, z) => this.dotHeight(x, z, this.cur);
   }
 
@@ -161,6 +202,7 @@ export class Landscape {
     pos.needsUpdate = true; col.needsUpdate = true;
     this.geo.computeVertexNormals();
     this.geo.computeBoundingSphere();
+    this.updateSkirt();
     const wp = this.wgeo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < wp.count; i++) wp.setY(i, this.yE(h(wp.getX(i), wp.getZ(i))));
     wp.needsUpdate = true;
@@ -276,8 +318,8 @@ export class Landscape {
       if (!r) return;
       s.scale.x = w1 - w0; s.position.set((w0 + w1) / 2, this.yE(r.E), 0);
       const inSea = r.E > 0 && r.E < d.EF + 0.003;
-      (s.material as THREE.MeshBasicMaterial).opacity = inSea ? 0.38 : 0.12;
-      (s.material as THREE.MeshBasicMaterial).color.set(inSea ? '#ffc96b' : '#a07a40');
+      (s.material as THREE.MeshBasicMaterial).opacity = inSea ? 0.55 : 0.18;
+      (s.material as THREE.MeshBasicMaterial).color.set(inSea ? '#f3c25e' : '#8a6a3a');
     });
     if (d.res[0]) this.lbls.well.position.set((w0 + w1) / 2 + 0.4, this.yE(d.res[0].E) + 0.25, -2.4);
     this.lbls.seaS.position.set(g.toW(g.xmin) + 1.2, this.yE(d.EF) + 0.2, 2.2);
